@@ -22,12 +22,13 @@ public class Main {
     static int cache[][] = new int[totalLineas][3];
     static HashMap<Integer, ArrayList<Integer>> direccionesEnCache = new HashMap();
 
+    //banderas
     final static int VALIDO = 1;
     final static int MODIFICADO = 1;
     final static int INVALIDO = 0;
     final static int NO_MODIFICADO = 0;
 
-    //restaura la cache y sus etiquetas
+    //restaura e invalida la cache y sus etiquetas
     public static void restaurarCache() {
         for (int i = 0; i < 64; i++) {
             cache[i][0] = 0;
@@ -91,7 +92,6 @@ public class Main {
 
                 if (estaEnCache(linea, direccion)) {
                     tiempo += 0.01;
-                    //System.out.println("Leer: +0.01, direccion: "+direccion +", dato: " + RAM[direccion] + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                 } else {
                     if (cache[linea][0] == INVALIDO) {
                         cache[linea][0] = VALIDO;
@@ -100,28 +100,25 @@ public class Main {
 
                         //transferir de RAM a cache y luego leer de cache, +0.11
                         tiempo += 0.11;
-                        //System.out.println("Leer: +0.11, direccion: "+direccion +", dato: " + RAM[direccion] + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                     } else {
-                        //revisar si tienen la misma etiqueta
+                        //linea es valida, entonces revisar si tienen la misma etiqueta
                         if (cache[linea][2] == etiqueta) {
                             //leer de la cache, +0.01
                             tiempo += 0.01;
-                            //System.out.println("Leer: +0.01, direccion: "+direccion +", dato: " + RAM[direccion] + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                         } else {
-                            //revisar si ha sido modificado
+                            //etiqueta es diferente, entonces revisar si ha sido modificada la linea
                             if (cache[linea][1] == MODIFICADO) {
                                 cache[linea][1] = NO_MODIFICADO;
                                 moverBloqueACache(linea, bloque);
 
                                 //transferir bloque modificado de cache a RAM, luego transferir nuevo bloque de RAM a cache, +0.22
                                 tiempo += 0.22;
-                                //System.out.println("Leer: +0.22, direccion: "+direccion +", dato: "+RAM[direccion] + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                             } else {
+                                //linea no modificada, entonces se puede transferir de la RAM a la cache
                                 moverBloqueACache(linea, bloque);
 
                                 //transferir de RAM a cache, +0.11
                                 tiempo += 0.11;
-                                //System.out.println("Leer: +0.11, direccion: "+direccion +", dato: "+RAM[direccion] + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                             }
                         }
                     }
@@ -138,46 +135,43 @@ public class Main {
                 break;
 
             case 1:
-                int bloqueDireccion = direccion / tamanoBloque;
-                int lineaDireccion = bloqueDireccion % totalLineas;
-                int etiquetaDireccion = bloqueDireccion / totalLineas;
+                int bloque = direccion / tamanoBloque;
+                int linea = bloque % totalLineas;
+                int etiqueta = bloque / totalLineas;
 
-                if (cache[lineaDireccion][0] == INVALIDO) {
-                    cache[lineaDireccion][0] = VALIDO;
-                    cache[lineaDireccion][1] = MODIFICADO;
-                    cache[lineaDireccion][2] = etiquetaDireccion;
-                    moverBloqueACache(lineaDireccion, bloqueDireccion);
+                if (cache[linea][0] == INVALIDO) {
+                    cache[linea][0] = VALIDO;
+                    cache[linea][1] = MODIFICADO;
+                    cache[linea][2] = etiqueta;
+                    moverBloqueACache(linea, bloque);
 
                     //transferir de RAM a cache, +0.11
                     tiempo += 0.11;
-                    //System.out.println("Escr: +0.11, dato: " + dato + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                 } else {
-                    //revisar si tienen la misma etiqueta
-                    if (cache[lineaDireccion][2] == etiquetaDireccion) {
+                    //linea es valida, entonces revisar si tienen la misma etiqueta
+                    if (cache[linea][2] == etiqueta) {
+                        cache[linea][1] = MODIFICADO;
+
                         //escribir a la cache, +0.01
-                        cache[lineaDireccion][1] = MODIFICADO;
                         tiempo += 0.01;
-                        //System.out.println("Escr: +0.01, dato: "+dato + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                     } else {
-                        //revisar si ha sido modificado
-                        if (cache[lineaDireccion][1] == MODIFICADO) {
-                            cache[lineaDireccion][0] = VALIDO;
-                            cache[lineaDireccion][1] = MODIFICADO;
-                            cache[lineaDireccion][2] = etiquetaDireccion;
-                            moverBloqueACache(lineaDireccion, bloqueDireccion);
+                        //etiqueta es diferente, entonces revisar si ha sido modificada la linea
+                        if (cache[linea][1] == MODIFICADO) {
+                            cache[linea][0] = VALIDO;
+                            cache[linea][1] = MODIFICADO;
+                            cache[linea][2] = etiqueta;
+                            moverBloqueACache(linea, bloque);
 
                             //transferir de cache a RAM (para no perder ese bloque), luego transferir de RAM a cache el nuevo bloque, +0.22
                             tiempo += 0.22;
-                            //System.out.println("Escr: +0.22, dato: " + dato + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                         } else {
-                            cache[lineaDireccion][0] = VALIDO;
-                            cache[lineaDireccion][1] = MODIFICADO;
-                            cache[lineaDireccion][2] = etiquetaDireccion;
-                            moverBloqueACache(lineaDireccion, bloqueDireccion);
+                            cache[linea][0] = VALIDO;
+                            cache[linea][1] = MODIFICADO;
+                            cache[linea][2] = etiqueta;
+                            moverBloqueACache(linea, bloque);
 
                             //transferir de RAM a cache, +0.11
                             tiempo += 0.11;
-                            //System.out.println("Escr: +0.11, dato: " + dato + " mod: " + " tiempo: "+ Math.round(tiempo * 1000.0) / 1000.0);
                         }
                     }
                 }
@@ -188,15 +182,12 @@ public class Main {
         RAM[direccion] = dato;
     }
 
-    public static void simulacion() {
+    public static void ordenamiento() {
         RAM = DATOS;
         int tipo = 1;
         //Bubblesort
         for (int i = 0; i <= totalDirecciones - 2; i++) {
             for (int j = i + 1; j <= totalDirecciones - 1; j++) {
-                //leer(i,tipo)
-                //i: direccion
-                //tipo -> 0: sin cache, 1: directo, 2: por conjuntos, 3: asoc. por conjuntos
                 if (leer(i, tipo) > leer(j, tipo)) {
                     int temp = leer(i, tipo);
                     escribir(i, tipo, leer(j, tipo));
@@ -232,11 +223,13 @@ public class Main {
         escribir(114, tipo, 13); //acierto
         escribir(115, tipo, 1); //acierto
 
+        //hasta aqui, tiempo debe valer 0.46 (esto esta bien)
+
         int menor = leer(100, tipo);
         int mayor = menor;
         int a = 0;
         for (int i = 101; i <= 115; i++) {
-            System.out.println("i: " + i + ", tiempo: " + tiempo);
+            System.out.println("i: " + i + ", tiempo: " + Math.round(tiempo * 1000.0) / 1000.0);
             a++;
             escribir(615, tipo, a);
             if (leer(i, tipo) < menor)
@@ -250,7 +243,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        //simulacion();
+        //ordenamiento();
         pruebaEscritorio();
     }
 }
