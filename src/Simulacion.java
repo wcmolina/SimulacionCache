@@ -151,10 +151,6 @@ public class Simulacion {
         RAM[direccion] = dato;
     }
 
-    private double redondeoDosCifras(double numero) {
-        return Math.round(numero * 1000.0) / 1000.0;
-    }
-
     private void ordenar(int tipo) {
         for (int i = 0; i <= DIRECCIONES_RAM - 2; i++) {
             for (int j = i + 1; j <= DIRECCIONES_RAM - 1; j++) {
@@ -169,38 +165,17 @@ public class Simulacion {
 
     public void correr() {
         final int DATOS[] = crearArreglo();
-        System.out.println("Resultados (tiempo en micro-segundos):");
-        System.out.println("--------------------------------------");
+        final String TIPOS[] = new String[] { "Sin cache", "Directa", "Asociativa", "Asociativa por conjuntos" };
+
+        System.out.println("Resultados (tiempo en microsegundos)\n");
         for (int tipo = 0; tipo < 4; tipo++) {
             //restaurar RAM, cache, y tiempo
             RAM = Arrays.copyOf(DATOS, DIRECCIONES_RAM);
             cache = new int[LINEAS_CACHE][3];
             tiempo = 0;
 
-            //algoritmo de ordenamiento
             ordenar(tipo);
-            switch (tipo) {
-                case 0:
-                    //sin cache
-                    System.out.println("Sin cache: " + redondeoDosCifras(tiempo));
-                    break;
-
-                case 1:
-                    //directo
-                    System.out.println("Correspondencia directa: " + redondeoDosCifras(tiempo));
-                    break;
-
-                case 2:
-                    //asociativo
-                    System.out.println("Correspondencia asociativa: " + redondeoDosCifras(tiempo));
-                    break;
-
-                case 3:
-                    //asociativo por conjuntos
-                    System.out.println("Correspondencia asociativa por conjuntos: " + redondeoDosCifras(tiempo));
-                    break;
-            }
+            System.out.format("%s: %.2f\n", TIPOS[tipo], tiempo);
         }
-        System.out.println("--------------------------------------");
     }
 }
