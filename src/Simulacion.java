@@ -13,16 +13,17 @@ public class Simulacion {
     private final int LINEAS_CACHE = 64;
     private final int TAMANO_BLOQUE = 8;
     private double tiempo;
+    private int siguiente;
 
     //64 lineas, 3 columnas (0 = valido, 1 = modificado, 2 = etiqueta)
-    private int cache[][];
+    private int cache[][] = new int[LINEAS_CACHE][3];
     private int RAM[];
 
     //banderas
     private final int VALIDO = 1;
     private final int MODIFICADO = 1;
-    private final int INVALIDO = 0;
-    private final int NO_MODIFICADO = 0;
+    private final int INVALIDO = -1;
+    private final int NO_MODIFICADO = -1;
 
     //leer el data.txt y llenar un arreglo con esos numeros
     private int[] crearArreglo() {
@@ -42,6 +43,21 @@ public class Simulacion {
         return arreglo;
     }
 
+    private void restaurarCache() {
+        for (int i = 0; i < 64; i++) {
+            cache[i][0] = -1;
+            cache[i][1] = -1;
+            cache[i][2] = -1;
+        }
+    }
+
+    private int estaEnCache(int bloque) {
+        for (int i = 0; i < LINEAS_CACHE; i++) {
+            if (cache[i][2] == bloque) return i;
+        }
+        return -1;
+    }
+
     //lee de la cache (o RAM) a partir de una direccion y tipo de correspondencia
     private int leer(int direccion, int tipo) {
         switch (tipo) {
@@ -50,8 +66,8 @@ public class Simulacion {
                 tiempo += 0.1;
                 break;
 
-            //correspondencia directa
-            case 1:
+            //directa
+            case 1: {
                 int bloque = direccion / TAMANO_BLOQUE;
                 int linea = bloque % LINEAS_CACHE;
                 int etiqueta = bloque / LINEAS_CACHE;
@@ -83,15 +99,56 @@ public class Simulacion {
                         cache[linea][2] = etiqueta;
                     }
                 }
-                break;
+            }
+            break;
 
-            case 2:
-                //correspondencia asociativa
-                break;
+            //asociativa
+            case 2: {
+                //si el siguiente se pasa del tamaño de la cache, que regrese a la 0
+                if (siguiente > 63) siguiente = 0;
+                int bloque = direccion / TAMANO_BLOQUE;
 
-            case 3:
-                //correspondencia asociativa por conjuntos
-                break;
+                if (estaEnCache(bloque) != -1) {
+                    tiempo += 0.01;
+                    break;
+                }
+
+                //no estaba en cache entonces hay que traer el bloque de la RAM a la linea donde 'apunte' la variable 'siguiente'
+                int linea = siguiente;
+                // en el asociativo, la etiqueta es todo el bloque
+                int etiqueta = bloque;
+
+                if (cache[linea][0] == INVALIDO) {
+                    cache[linea][0] = VALIDO;
+                    cache[linea][1] = NO_MODIFICADO;
+                    cache[linea][2] = etiqueta;
+                    siguiente++;
+
+                    //transferir de RAM a cache y luego leer de cache, +0.11
+                    tiempo += 0.11;
+                } else {
+                    //linea es valida, entonces ya habia un bloque ahi. Ver si esa linea esta modificada
+                    if (cache[linea][1] == MODIFICADO) {
+                        cache[linea][1] = NO_MODIFICADO;
+                        //transferir bloque modificado de cache a RAM, luego transferir nuevo bloque de RAM a cache, +0.22
+                        tiempo += 0.22;
+                    } else {
+                        //se puede transferir de la RAM a la cache sin perder cambios en el bloque reemplazado
+                        //transferir de RAM a cache, +0.11
+                        tiempo += 0.11;
+                    }
+                    //actualizar etiqueta siempre que se trae un bloque de la RAM a la cache
+                    cache[linea][2] = etiqueta;
+                    siguiente++;
+                }
+            }
+            break;
+
+            //asociativa por conjuntos
+            case 3: {
+
+            }
+            break;
 
             default: break;
         }
@@ -101,11 +158,13 @@ public class Simulacion {
 
     private void escribir(int direccion, int tipo, int dato) {
         switch (tipo) {
+            //sin cache
             case 0:
                 tiempo += 0.1;
                 break;
 
-            case 1:
+            //directa
+            case 1: {
                 int bloque = direccion / TAMANO_BLOQUE;
                 int linea = bloque % LINEAS_CACHE;
                 int etiqueta = bloque / LINEAS_CACHE;
@@ -135,15 +194,55 @@ public class Simulacion {
                 }
                 //modificado porque se escribe en cache y no en RAM
                 cache[linea][1] = MODIFICADO;
-                break;
+            }
+            break;
 
-            case 2:
-                //correspondencia asociativa
-                break;
+            //asociativa
+            case 2: {
+                //si el siguiente se pasa del tamaño de la cache, que regrese a la 0
+                if (siguiente > 63) siguiente = 0;
+                int bloque = direccion / TAMANO_BLOQUE;
+                int linea;
 
-            case 3:
-                //correspondencia asociativa por conjuntos
-                break;
+                if ((linea = estaEnCache(bloque)) != -1) {
+                    tiempo += 0.01;
+                    cache[linea][1] = MODIFICADO;
+                    break;
+                }
+
+                //no estaba en cache entonces hay que traer el bloque de la RAM a la linea donde 'apunte' la variable 'siguiente'
+                linea = siguiente;
+                //en el asociativo, la etiqueta es todo el bloque
+                int etiqueta = bloque;
+                if (cache[linea][0] == INVALIDO) {
+                    cache[linea][0] = VALIDO;
+                    cache[linea][2] = etiqueta;
+                    //transferir de RAM a cache, +0.11
+                    tiempo += 0.11;
+                } else {
+                    //linea es valida, entonces ya habia un bloque ahi. Ver si esa linea esta modificada
+                    if (cache[linea][1] == MODIFICADO) {
+                        //transferir bloque de cache a RAM (para no perder los cambios), luego transferir de RAM a cache el nuevo bloque, +0.22
+                        tiempo += 0.22;
+                    } else {
+                        //transferir de RAM a cache, +0.11
+                        tiempo += 0.11;
+                    }
+                    //actualizar etiqueta siempre que se trae un bloque de la RAM
+                    cache[linea][2] = etiqueta;
+                }
+                //se escribe en la cache y no en la RAM, entonces marcar la linea como modificada
+                cache[linea][1] = MODIFICADO;
+                //una vez escrito, que esriba la proxima en la siguiente linea
+                siguiente++;
+            }
+            break;
+
+            //asociativa por conjuntos
+            case 3: {
+
+            }
+            break;
 
             default: break;
         }
@@ -167,15 +266,15 @@ public class Simulacion {
         final int DATOS[] = crearArreglo();
         final String TIPOS[] = new String[] { "Sin cache", "Directa", "Asociativa", "Asociativa por conjuntos" };
 
-        System.out.println("Resultados (tiempo en microsegundos)\n");
+        System.out.printf("Resultados (tiempo en microsegundos)\n\nCon n = %d\n", DIRECCIONES_RAM);
         for (int tipo = 0; tipo < 4; tipo++) {
             //restaurar RAM, cache, y tiempo
             RAM = Arrays.copyOf(DATOS, DIRECCIONES_RAM);
-            cache = new int[LINEAS_CACHE][3];
+            restaurarCache();
             tiempo = 0;
 
             ordenar(tipo);
-            System.out.format("%s: %.2f\n", TIPOS[tipo], tiempo);
+            System.out.format("%s -> %.2f\n", TIPOS[tipo], tiempo);
         }
     }
 }
