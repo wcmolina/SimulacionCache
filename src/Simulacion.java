@@ -9,7 +9,6 @@ public class Simulacion {
     //cache = 512 bytes
     //bloque = 8 bytes
 
-    private final int DIRECCIONES_RAM = 4096;
     private final int LINEAS_CACHE = 64;
     private final int TAMANO_BLOQUE = 8;
     private final int CONJUNTOS_CACHE = 16;
@@ -20,6 +19,7 @@ public class Simulacion {
     private final int INVALIDO = -1;
     private final int NO_MODIFICADO = -1;
 
+    private int DIRECCIONES_RAM;
     private double tiempo;
     private int siguiente;
     //64 lineas, 3 columnas (0 = valido, 1 = modificado, 2 = etiqueta)
@@ -27,6 +27,14 @@ public class Simulacion {
     private int cacheConjuntos[][][] = new int[CONJUNTOS_CACHE][TAMANO_CONJUNTO][3];
     private int siguienteConjunto[][] = new int[CONJUNTOS_CACHE][1];
     private int RAM[];
+
+    public Simulacion() {
+        this.DIRECCIONES_RAM = 4096;
+    }
+
+    public Simulacion(int direcciones) {
+        this.DIRECCIONES_RAM = direcciones;
+    }
 
     //leer el data.txt y llenar un arreglo con esos numeros
     private int[] crearArreglo() {
