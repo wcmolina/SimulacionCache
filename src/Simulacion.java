@@ -1,24 +1,22 @@
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
 import java.util.Arrays;
+import java.util.Locale;
 
 public class Simulacion {
     //RAM = 4096 bytes
     //cache = 512 bytes
     //bloque = 8 bytes
-
     private final int LINEAS_CACHE = 64;
     private final int TAMANO_BLOQUE = 8;
     private final int CONJUNTOS_CACHE = 16;
     private final int TAMANO_CONJUNTO = 4;
-    //banderas
     private final int VALIDO = 1;
     private final int MODIFICADO = 1;
     private final int INVALIDO = -1;
     private final int NO_MODIFICADO = -1;
-
     private int DIRECCIONES_RAM;
     private double tiempo;
     private int siguiente;
@@ -27,25 +25,29 @@ public class Simulacion {
     private int cacheConjuntos[][][] = new int[CONJUNTOS_CACHE][TAMANO_CONJUNTO][3];
     private int siguienteConjunto[][] = new int[CONJUNTOS_CACHE][1];
     private int RAM[];
+    //resultados de los 4 tipos de correspondencia
+    public String resultados = "";
 
     public Simulacion() {
-        this.DIRECCIONES_RAM = 4096;
+        DIRECCIONES_RAM = 4096;
+
     }
 
     public Simulacion(int direcciones) {
-        this.DIRECCIONES_RAM = direcciones;
+        DIRECCIONES_RAM = direcciones;
     }
 
     //leer el data.txt y llenar un arreglo con esos numeros
     private int[] crearArreglo() {
-        int arreglo[] = new int[DIRECCIONES_RAM];
-        FileReader lector = null;
+        final int arreglo[] = new int[DIRECCIONES_RAM];
+        InputStream in = getClass().getResourceAsStream("data.txt");
         try {
-            lector = new FileReader("data.txt");
-            BufferedReader buffer = new BufferedReader(lector);
+            BufferedReader buffer = new BufferedReader(new InputStreamReader(in));
             for (int i = 0; i < DIRECCIONES_RAM; i++) {
                 arreglo[i] = Integer.parseInt(buffer.readLine());
             }
+            in.close();
+            buffer.close();
         } catch (FileNotFoundException fnfe) {
             System.out.println("Error: no se encontró el archivo.");
         } catch (IOException e) {
@@ -96,9 +98,9 @@ public class Simulacion {
 
             //directa
             case 1: {
-                int bloque = direccion / TAMANO_BLOQUE;
-                int linea = bloque % LINEAS_CACHE;
-                int etiqueta = bloque / LINEAS_CACHE;
+                final int bloque = direccion / TAMANO_BLOQUE;
+                final int linea = bloque % LINEAS_CACHE;
+                final int etiqueta = bloque / LINEAS_CACHE;
 
                 if (cache[linea][0] == INVALIDO) {
                     cache[linea][0] = VALIDO;
@@ -134,7 +136,7 @@ public class Simulacion {
             case 2: {
                 //si el siguiente se pasa del tamaño de la cache, que regrese a la 0
                 if (siguiente > LINEAS_CACHE - 1) siguiente = 0;
-                int bloque = direccion / TAMANO_BLOQUE;
+                final int bloque = direccion / TAMANO_BLOQUE;
 
                 if (estaEnCache(bloque) != -1) {
                     tiempo += 0.01;
@@ -142,9 +144,9 @@ public class Simulacion {
                 }
 
                 //no estaba en cache entonces hay que traer el bloque de la RAM a la linea donde 'apunte' la variable 'siguiente'
-                int linea = siguiente;
+                final int linea = siguiente;
                 // en el asociativo, la etiqueta es todo el bloque
-                int etiqueta = bloque;
+                final int etiqueta = bloque;
 
                 if (cache[linea][0] == INVALIDO) {
                     cache[linea][0] = VALIDO;
@@ -174,9 +176,9 @@ public class Simulacion {
 
             //asociativa por conjuntos
             case 3: {
-                int bloque = direccion / TAMANO_BLOQUE;
-                int conjunto = bloque % CONJUNTOS_CACHE;
-                int etiqueta = bloque / CONJUNTOS_CACHE;
+                final int bloque = direccion / TAMANO_BLOQUE;
+                final int conjunto = bloque % CONJUNTOS_CACHE;
+                final int etiqueta = bloque / CONJUNTOS_CACHE;
 
                 //si el siguiente se pasa del tamaño de conjunto, que regrese a 0
                 if (siguienteConjunto[conjunto][0] > TAMANO_CONJUNTO - 1) siguienteConjunto[conjunto][0] = 0;
@@ -230,9 +232,9 @@ public class Simulacion {
 
             //directa
             case 1: {
-                int bloque = direccion / TAMANO_BLOQUE;
-                int linea = bloque % LINEAS_CACHE;
-                int etiqueta = bloque / LINEAS_CACHE;
+                final int bloque = direccion / TAMANO_BLOQUE;
+                final int linea = bloque % LINEAS_CACHE;
+                final int etiqueta = bloque / LINEAS_CACHE;
 
                 if (cache[linea][0] == INVALIDO) {
                     cache[linea][0] = VALIDO;
@@ -266,7 +268,9 @@ public class Simulacion {
             case 2: {
                 //si el siguiente se pasa del tamaño de la cache, que regrese a la 0
                 if (siguiente > LINEAS_CACHE - 1) siguiente = 0;
-                int bloque = direccion / TAMANO_BLOQUE;
+                final int bloque = direccion / TAMANO_BLOQUE;
+                //en el asociativo, la etiqueta es todo el bloque
+                final int etiqueta = bloque;
                 int linea;
 
                 if ((linea = estaEnCache(bloque)) != -1) {
@@ -277,8 +281,6 @@ public class Simulacion {
 
                 //no estaba en cache entonces hay que traer el bloque de la RAM a la linea donde 'apunte' la variable 'siguiente'
                 linea = siguiente;
-                //en el asociativo, la etiqueta es todo el bloque
-                int etiqueta = bloque;
                 if (cache[linea][0] == INVALIDO) {
                     cache[linea][0] = VALIDO;
                     cache[linea][2] = etiqueta;
@@ -305,9 +307,9 @@ public class Simulacion {
 
             //asociativa por conjuntos
             case 3: {
-                int bloque = direccion / TAMANO_BLOQUE;
-                int conjunto = bloque % CONJUNTOS_CACHE;
-                int etiqueta = bloque / CONJUNTOS_CACHE;
+                final int bloque = direccion / TAMANO_BLOQUE;
+                final int conjunto = bloque % CONJUNTOS_CACHE;
+                final int etiqueta = bloque / CONJUNTOS_CACHE;
 
                 //si el siguiente se pasa del tamaño de conjunto, que regrese a 0
                 if (siguienteConjunto[conjunto][0] > TAMANO_CONJUNTO - 1) siguienteConjunto[conjunto][0] = 0;
@@ -367,8 +369,7 @@ public class Simulacion {
     public void correr() {
         final int DATOS[] = crearArreglo();
         final String TIPOS[] = new String[] { "Sin cache", "Directa", "Asociativa", "Asociativa por conjuntos" };
-
-        System.out.printf("Resultados (tiempo en microsegundos)\n\nCon n = %d\n", DIRECCIONES_RAM);
+        resultados = String.format("Resultados (N = %d)%n%n", DIRECCIONES_RAM);
         for (int tipo = 0; tipo < 4; tipo++) {
             //restaurar RAM, cache, y tiempo
             RAM = Arrays.copyOf(DATOS, DIRECCIONES_RAM);
@@ -376,7 +377,7 @@ public class Simulacion {
             tiempo = 0;
 
             ordenar(tipo);
-            System.out.format("%s -> %.2f\n", TIPOS[tipo], tiempo);
+            resultados += String.format("%s:%n%,.2f μs%n%n", TIPOS[tipo], tiempo);
         }
     }
 }
