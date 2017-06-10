@@ -12,18 +12,21 @@ public class Simulacion {
     private final int DIRECCIONES_RAM = 4096;
     private final int LINEAS_CACHE = 64;
     private final int TAMANO_BLOQUE = 8;
-    private double tiempo;
-    private int siguiente;
-
-    //64 lineas, 3 columnas (0 = valido, 1 = modificado, 2 = etiqueta)
-    private int cache[][] = new int[LINEAS_CACHE][3];
-    private int RAM[];
-
+    private final int CONJUNTOS_CACHE = 16;
+    private final int TAMANO_CONJUNTO = 4;
     //banderas
     private final int VALIDO = 1;
     private final int MODIFICADO = 1;
     private final int INVALIDO = -1;
     private final int NO_MODIFICADO = -1;
+
+    private double tiempo;
+    private int siguiente;
+    //64 lineas, 3 columnas (0 = valido, 1 = modificado, 2 = etiqueta)
+    private int cache[][] = new int[LINEAS_CACHE][3];
+    private int cacheConjuntos[][][] = new int[CONJUNTOS_CACHE][TAMANO_CONJUNTO][3];
+    private int siguienteConjunto[][] = new int[CONJUNTOS_CACHE][1];
+    private int RAM[];
 
     //leer el data.txt y llenar un arreglo con esos numeros
     private int[] crearArreglo() {
@@ -44,16 +47,33 @@ public class Simulacion {
     }
 
     private void restaurarCache() {
-        for (int i = 0; i < 64; i++) {
+        //cache sin conjuntos
+        for (int i = 0; i < LINEAS_CACHE; i++) {
             cache[i][0] = -1;
             cache[i][1] = -1;
             cache[i][2] = -1;
+        }
+
+        //cache con conjuntos
+        for (int i = 0; i < CONJUNTOS_CACHE; i++) {
+            for (int j = 0; j < TAMANO_CONJUNTO; j++) {
+                cacheConjuntos[i][j][0] = -1;
+                cacheConjuntos[i][j][1] = -1;
+                cacheConjuntos[i][j][2] = -1;
+            }
         }
     }
 
     private int estaEnCache(int bloque) {
         for (int i = 0; i < LINEAS_CACHE; i++) {
             if (cache[i][2] == bloque) return i;
+        }
+        return -1;
+    }
+
+    private int estaEnConjunto(int conjunto, int etiqueta) {
+        for (int i = 0; i < TAMANO_CONJUNTO; i++) {
+            if (cacheConjuntos[conjunto][i][2] == etiqueta) return i;
         }
         return -1;
     }
@@ -105,7 +125,7 @@ public class Simulacion {
             //asociativa
             case 2: {
                 //si el siguiente se pasa del tamaño de la cache, que regrese a la 0
-                if (siguiente > 63) siguiente = 0;
+                if (siguiente > LINEAS_CACHE - 1) siguiente = 0;
                 int bloque = direccion / TAMANO_BLOQUE;
 
                 if (estaEnCache(bloque) != -1) {
@@ -146,7 +166,45 @@ public class Simulacion {
 
             //asociativa por conjuntos
             case 3: {
+                double diferencia = tiempo;
+                int bloque = direccion / TAMANO_BLOQUE;
+                int conjunto = bloque % CONJUNTOS_CACHE;
+                int etiqueta = bloque / CONJUNTOS_CACHE;
 
+                //si el siguiente se pasa del tamaño de conjunto, que regrese a 0
+                if (siguienteConjunto[conjunto][0] > TAMANO_CONJUNTO - 1) siguienteConjunto[conjunto][0] = 0;
+
+                if (estaEnConjunto(conjunto, etiqueta) != -1) {
+                    tiempo += 0.01;
+                    break;
+                }
+
+                //no estaba en cache entonces hay que traer el bloque de la RAM a la linea del conjunto donde apunte 'siguiente'
+                int linea = siguienteConjunto[conjunto][0];
+
+                if (cacheConjuntos[conjunto][linea][0] == INVALIDO) {
+                    cacheConjuntos[conjunto][linea][0] = VALIDO;
+                    cacheConjuntos[conjunto][linea][1] = NO_MODIFICADO;
+                    cacheConjuntos[conjunto][linea][2] = etiqueta;
+                    siguienteConjunto[conjunto][0]++;
+
+                    //transferir de RAM a cache y luego leer de cache, +0.11
+                    tiempo += 0.11;
+                } else {
+                    //linea es valida, entonces ya habia un bloque ahi. Ver si esa linea esta modificada
+                    if (cacheConjuntos[conjunto][linea][1] == MODIFICADO) {
+                        cacheConjuntos[conjunto][linea][1] = NO_MODIFICADO;
+                        //transferir bloque modificado de cache a RAM, luego transferir nuevo bloque de RAM a cache, +0.22
+                        tiempo += 0.22;
+                    } else {
+                        //se puede transferir de la RAM a la cache sin perder cambios en el bloque reemplazado
+                        //transferir de RAM a cache, +0.11
+                        tiempo += 0.11;
+                    }
+                    //actualizar etiqueta siempre que se trae un bloque de la RAM a la cache
+                    cacheConjuntos[conjunto][linea][2] = etiqueta;
+                    siguienteConjunto[conjunto][0]++;
+                }
             }
             break;
 
@@ -200,7 +258,7 @@ public class Simulacion {
             //asociativa
             case 2: {
                 //si el siguiente se pasa del tamaño de la cache, que regrese a la 0
-                if (siguiente > 63) siguiente = 0;
+                if (siguiente > LINEAS_CACHE - 1) siguiente = 0;
                 int bloque = direccion / TAMANO_BLOQUE;
                 int linea;
 
@@ -240,7 +298,45 @@ public class Simulacion {
 
             //asociativa por conjuntos
             case 3: {
+                double diferencia = tiempo;
+                int bloque = direccion / TAMANO_BLOQUE;
+                int conjunto = bloque % CONJUNTOS_CACHE;
+                int etiqueta = bloque / CONJUNTOS_CACHE;
 
+                //si el siguiente se pasa del tamaño de conjunto, que regrese a 0
+                if (siguienteConjunto[conjunto][0] > TAMANO_CONJUNTO - 1) siguienteConjunto[conjunto][0] = 0;
+
+                int linea;
+                if ((linea = estaEnConjunto(conjunto, etiqueta)) != -1) {
+                    tiempo += 0.01;
+                    cacheConjuntos[conjunto][linea][1] = MODIFICADO;
+                    break;
+                }
+
+                //no estaba en cache entonces hay que traer el bloque de la RAM a la linea donde 'apunte' la variable 'siguiente'
+                linea = siguienteConjunto[conjunto][0];
+
+                if (cacheConjuntos[conjunto][linea][0] == INVALIDO) {
+                    cacheConjuntos[conjunto][linea][0] = VALIDO;
+                    cacheConjuntos[conjunto][linea][2] = etiqueta;
+                    //transferir de RAM a cache, +0.11
+                    tiempo += 0.11;
+                } else {
+                    //linea es valida, entonces ya habia un bloque ahi. Ver si esa linea esta modificada
+                    if (cacheConjuntos[conjunto][linea][1] == MODIFICADO) {
+                        //transferir bloque de cache a RAM (para no perder los cambios), luego transferir de RAM a cache el nuevo bloque, +0.22
+                        tiempo += 0.22;
+                    } else {
+                        //transferir de RAM a cache, +0.11
+                        tiempo += 0.11;
+                    }
+                    //actualizar etiqueta siempre que se trae un bloque de la RAM
+                    cacheConjuntos[conjunto][linea][2] = etiqueta;
+                }
+                //se escribe en la cache y no en la RAM, entonces marcar la linea como modificada
+                cacheConjuntos[conjunto][linea][1] = MODIFICADO;
+                //una vez escrito, que esriba la proxima en la siguiente linea
+                siguienteConjunto[conjunto][0]++;
             }
             break;
 
