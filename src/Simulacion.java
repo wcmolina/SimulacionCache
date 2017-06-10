@@ -174,7 +174,6 @@ public class Simulacion {
 
             //asociativa por conjuntos
             case 3: {
-                double diferencia = tiempo;
                 int bloque = direccion / TAMANO_BLOQUE;
                 int conjunto = bloque % CONJUNTOS_CACHE;
                 int etiqueta = bloque / CONJUNTOS_CACHE;
@@ -306,7 +305,6 @@ public class Simulacion {
 
             //asociativa por conjuntos
             case 3: {
-                double diferencia = tiempo;
                 int bloque = direccion / TAMANO_BLOQUE;
                 int conjunto = bloque % CONJUNTOS_CACHE;
                 int etiqueta = bloque / CONJUNTOS_CACHE;
